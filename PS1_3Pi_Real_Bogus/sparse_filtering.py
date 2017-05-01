@@ -23,7 +23,8 @@ class sparse_filtering(object):
     self.max_iter = int(max_iter)
 
   def fit(self, X, channels=1):
-    """
+    """Train sparse filtering.
+    
        Parameters
        ----------
        X : array, shape = [n_features, n_samples]
@@ -47,7 +48,7 @@ class sparse_filtering(object):
     self.iteration = 0
     self.trained_W = None
     self.channels = int(channels)
-    self.n_features, m = np.shape(X)
+    self.n_features, self.n_samples = np.shape(X)
     args = (X, 1)
     initW = np.ravel(np.random.rand(self.k, self.n_features), order="F")
     optW = optimize.fmin_cg(objective, \
@@ -59,10 +60,8 @@ class sparse_filtering(object):
     self.trained_W = optW
 
   def objective(self, X, W, channels):
-    """
-    """
-    n, m = np.shape(X)
-    W = np.reshape(W, (self.k, n), order="F")
+    """The sparse filtering objective function."""
+    W = np.reshape(W, (self.k, self.n_features), order="F")
     # Feed forward
     F = np.dot(W, X)
     Fs = np.sqrt(np.multiply(F, F) + 1e-8)
@@ -80,9 +79,8 @@ class sparse_filtering(object):
   def l2row(self, X):
     """
     """
-    n, m = np.shape(X)
     N = np.sqrt(np.sum(np.multiply(X, X), axis=1) + 1e-8)
-    N_stack = np.tile(N, (m, 1)).T
+    N_stack = np.tile(N, (self.n_samples, 1)).T
     Y = np.divide(X, N_stack)
     return Y, N
 
@@ -94,26 +92,13 @@ class sparse_filtering(object):
   def l2rowg(self, X, Y, N, D):
     """
     """
-    n, m = np.shape(X)
-    N_stack = np.tile(N, (m, 1)).T
+    N_stack = np.tile(N, (self.n_samples, 1)).T
     firstTerm = np.divide(D, N_stack)
     sum = np.sum(np.multiply(D, X), 1)
     sum = sum / (np.multiply(N,N))
     sum_stack = np.tile(sum[np.newaxis], (np.shape(Y)[1],1)).T
     secondTerm = np.multiply(Y, sum_stack)
     return firstTerm - secondTerm
-
-  def feedForward(self, W, X):
-    """
-    """
-    # Feed Forward
-    n, m = np.shape(X)
-    W = np.reshape(W, (self.k, self.n_features), order="F")
-    F = np.dot(W, X)
-    Fs = np.sqrt(np.multiply(F, F) + 1e-8)
-    NFs, L2Fs = self.l2row(Fs)
-    Fhat, L2Fn = self.l2row(NFs.T)
-
 
   def callback(self, W):
     """
@@ -122,9 +107,8 @@ class sparse_filtering(object):
     sys.stdout.flush()
     self.iteration += 1
 
-  def visualiseLearnedFeatures(self):
-    """
-    """
+  def visualise(self):
+    """Visualise the current state of self.trained_W."""
     import matplotlib.pyplot as plt
     W = np.reshape(self.trained_W, (self.k, self.n_features), order="F")
     # each row of W is a learned feature
@@ -152,7 +136,13 @@ class sparse_filtering(object):
     plt.show()
 
   def save(self, out_file):
-    """
+    """Save the current sparse filtering state to disk.
+    
+       Parameters
+       ----------
+       
+       out_file : string
+           The output filename.
     """
     output = open(out_file, "w")
     sio.savemat(output, {"k":int(self.k),
